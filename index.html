@@ -51,8 +51,9 @@
 <body>
 
     <!-- Area Tampilan Saldo BTC Minimalis -->
-    <div class="full-screen-center">
-        <div id="btc-balance-display" class="text-7xl font-black btc-gradient text-center">
+    <div class="full-screen-center p-2">
+        <!-- Responsif: text-5xl (default/mobile) -> sm:text-7xl (tablet) -> lg:text-8xl (desktop besar) -->
+        <div id="btc-balance-display" class="text-5xl sm:text-7xl lg:text-8xl font-black btc-gradient text-center whitespace-nowrap overflow-hidden">
             <!-- Placeholder saat memuat data -->
             <div class="loading-animation"></div>
         </div>
@@ -68,13 +69,12 @@
 
         const displayElement = document.getElementById('btc-balance-display');
         
-        // Fungsi untuk format angka desimal (BTC)
+        // Fungsi untuk format angka (hanya angka bulat)
         const formatBTC = (number) => {
-            if (typeof number !== 'number') return '0.00000000';
-            return new Intl.NumberFormat('en-US', {
-                minimumFractionDigits: 8, // Tampilkan 8 desimal untuk presisi BTC
-                maximumFractionDigits: 8,
-            }).format(number);
+            if (typeof number !== 'number') return '0';
+            // Gunakan Math.floor untuk membulatkan ke bawah dan menghilangkan semua desimal
+            const integerPart = Math.floor(number);
+            return new Intl.NumberFormat('en-US').format(integerPart);
         };
 
         // Fungsi dengan Exponential Backoff untuk menangani rate limit
@@ -117,7 +117,7 @@
                     const formattedBalance = formatBTC(balanceInBTC);
                     
                     // Perbarui tampilan dengan data yang diformat
-                    displayElement.innerHTML = `${formattedBalance} BTC`;
+                    displayElement.innerHTML = `${formattedBalance}&nbsp;BTC`;
                     
                 } else {
                     throw new Error('Data saldo (balance) tidak ditemukan di respons API.');
@@ -126,8 +126,7 @@
             } catch (error) {
                 // Tampilkan 0 BTC sebagai default jika gagal
                 const fallbackBalance = 0; 
-                displayElement.innerHTML = `${formatBTC(fallbackBalance)} BTC`;
-                // Log error di console saja (tidak ada pesan di layar)
+                displayElement.innerHTML = `${formatBTC(fallbackBalance)}&nbsp;BTC`;
                 console.error("Gagal memuat saldo real-time:", error);
             }
         }
