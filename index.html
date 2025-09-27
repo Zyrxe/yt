@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saldo BTC Saja</title>
+    <!-- Muat Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Mengatur font agar terlihat lebih profesional */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Hapus semua latar belakang dan padding */
+            background-color: transparent !important;
+            margin: 0;
+            padding: 0;
+        }
+        /* Kontainer untuk menempatkan angka di tengah layar */
+        .full-screen-center {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none; /* Pastikan tidak mengganggu interaksi lain */
+        }
+        .btc-gradient {
+            /* Warna khas Bitcoin */
+            background: linear-gradient(90deg, #ff9900 0%, #ff6f00 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .loading-animation {
+            border: 4px solid rgba(255, 153, 0, 0.3);
+            border-top: 4px solid #ff9900;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Area Tampilan Saldo BTC Minimalis -->
+    <div class="full-screen-center">
+        <div id="btc-balance-display" class="text-7xl font-black btc-gradient text-center">
+            <!-- Placeholder saat memuat data -->
+            <div class="loading-animation"></div>
+        </div>
+    </div>
+
+    <script>
+        // Alamat dompet yang ingin dilacak
+        const WALLET_ADDRESS = '34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo';
+        // Menggunakan API BlockCypher untuk mendapatkan saldo dompet
+        const API_URL = `https://api.blockcypher.com/v1/btc/main/addrs/${WALLET_ADDRESS}/balance`;
+        
+        const SATOSHIS_PER_BTC = 100000000;
+
+        const displayElement = document.getElementById('btc-balance-display');
+        
+        // Fungsi untuk format angka desimal (BTC)
+        const formatBTC = (number) => {
+            if (typeof number !== 'number') return '0.00000000';
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 8, // Tampilkan 8 desimal untuk presisi BTC
+                maximumFractionDigits: 8,
+            }).format(number);
+        };
+
+        // Fungsi dengan Exponential Backoff untuk menangani rate limit
+        async function fetchWithBackoff(url, maxRetries = 5) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url);
+                    
+                    if (response.status === 429) {
+                        await new Promise(resolve => setTimeout(resolve, (2 ** i) * 1000));
+                        continue; 
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    return response.json();
+
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        throw new Error(`Gagal mengambil data setelah ${maxRetries} kali coba: ${error.message}`);
+                    }
+                    await new Promise(resolve => setTimeout(resolve, (2 ** i) * 1000));
+                }
+            }
+            throw new Error("Gagal mengambil data setelah semua percobaan.");
+        }
+
+        async function fetchWalletBalance() {
+            try {
+                const data = await fetchWithBackoff(API_URL);
+
+                // API BlockCypher mengembalikan saldo dalam satoshi (balance field)
+                const balanceInSatoshis = data.balance; 
+
+                if (typeof balanceInSatoshis === 'number') {
+                    // Konversi satoshi ke BTC (1 BTC = 100,000,000 satoshis)
+                    const balanceInBTC = balanceInSatoshis / SATOSHIS_PER_BTC;
+                    const formattedBalance = formatBTC(balanceInBTC);
+                    
+                    // Perbarui tampilan dengan data yang diformat
+                    displayElement.innerHTML = `${formattedBalance} BTC`;
+                    
+                } else {
+                    throw new Error('Data saldo (balance) tidak ditemukan di respons API.');
+                }
+                
+            } catch (error) {
+                // Tampilkan 0 BTC sebagai default jika gagal
+                const fallbackBalance = 0; 
+                displayElement.innerHTML = `${formatBTC(fallbackBalance)} BTC`;
+                // Log error di console saja (tidak ada pesan di layar)
+                console.error("Gagal memuat saldo real-time:", error);
+            }
+        }
+
+        function startRealTimeUpdates() {
+            // Jalankan fungsi pertama kali segera
+            fetchWalletBalance();
+            // Kemudian, perbarui setiap 15 detik (15000 ms)
+            setInterval(fetchWalletBalance, 15000); 
+        }
+
+        // Jalankan fungsi saat halaman dimuat
+        window.onload = startRealTimeUpdates;
+    </script>
+</body>
+</html>
