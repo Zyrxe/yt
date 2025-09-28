@@ -3,143 +3,564 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saldo BTC Saja</title>
-    <!-- Muat Tailwind CSS -->
+    <title>Katalog Minimalis Tanpa Keranjang</title>
+    <!-- Memuat Tailwind CSS dan Font Inter -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        /* Mengatur font agar terlihat lebih profesional */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            /* Hapus semua latar belakang dan padding */
-            background-color: transparent !important;
-            margin: 0;
-            padding: 0;
+            background-color: #f7f9fb;
         }
-        /* Kontainer untuk menempatkan angka di tengah layar */
-        .full-screen-center {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none; /* Pastikan tidak mengganggu interaksi lain */
+        /* Style untuk gambar persegi, memaksimalkan ruang horizontal */
+        .product-image {
+            aspect-ratio: 1/1; 
+            object-fit: cover;
         }
-        .btc-gradient {
-            /* Warna khas Bitcoin */
-            background: linear-gradient(90deg, #ff9900 0%, #ff6f00 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        /* Padding sangat minimal untuk konten kartu */
+        .product-card-content {
+            padding: 0.5rem; 
+            min-height: 50px; /* Memastikan ruang minimum untuk teks */
         }
-        .loading-animation {
-            border: 4px solid rgba(255, 153, 0, 0.3);
-            border-top: 4px solid #ff9900;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
+        .product-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .product-card:hover {
+            box-shadow: 0 4px 8px -1px rgba(45, 212, 191, 0.2);
+            transform: scale(1.03); /* Sedikit efek zoom pada hover */
         }
     </style>
 </head>
 <body>
 
-    <!-- Area Tampilan Saldo BTC Minimalis -->
-    <div class="full-screen-center p-2">
-        <!-- Responsif: text-5xl (default/mobile) -> sm:text-7xl (tablet) -> lg:text-8xl (desktop besar) -->
-        <div id="btc-balance-display" class="text-5xl sm:text-7xl lg:text-8xl font-black btc-gradient text-center whitespace-nowrap overflow-hidden">
-            <!-- Placeholder saat memuat data -->
-            <div class="loading-animation"></div>
+    <!-- 1. Navigasi Bar (Header: Sangat Pendek) -->
+    <header class="sticky top-0 z-50 bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-2 sm:px-4">
+            <div class="flex justify-between items-center h-10">
+                <a href="#" class="text-lg font-bold text-teal-600 tracking-tight">Katalog Penuh</a>
+                <!-- Link navigasi dihilangkan untuk fokus pada kepadatan -->
+            </div>
         </div>
-    </div>
+    </header>
 
-    <script>
-        // Alamat dompet yang ingin dilacak
-        const WALLET_ADDRESS = '34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo';
-        // Menggunakan API BlockCypher untuk mendapatkan saldo dompet
-        const API_URL = `https://api.blockcypher.com/v1/btc/main/addrs/${WALLET_ADDRESS}/balance`;
+    <main>
+        <!-- 2. Bagian Banner (Sangat Pendek) -->
+        <section id="banner" class="pt-8 pb-8 bg-gradient-to-r from-teal-500 to-teal-700 text-white shadow-md">
+            <div class="max-w-7xl mx-auto px-4 text-center">
+                <h1 class="text-2xl sm:text-3xl font-extrabold mb-1">
+                    Koleksi Produk Terbaik
+                </h1>
+                <p class="text-sm opacity-90">
+                    Ribuan produk tersusun rapi untuk Anda jelajahi.
+                </p>
+            </div>
+        </section>
         
-        const SATOSHIS_PER_BTC = 100000000;
+        <!-- 3. Bagian Pencarian Produk (Ringkas) -->
+        <section id="pencarian" class="py-4 -mt-4 z-20 relative">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6">
+                <div class="bg-white p-3 rounded-xl shadow-xl border-b-2 border-teal-500">
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        placeholder="Cari nama produk atau harga..." 
+                        class="w-full p-2 text-sm border border-gray-200 rounded-lg focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition duration-150"
+                        onkeyup="handleSearch()"
+                        aria-label="Kolom Pencarian Produk"
+                    >
+                </div>
+            </div>
+        </section>
 
-        const displayElement = document.getElementById('btc-balance-display');
-        
-        // Fungsi untuk format angka (hanya angka bulat)
-        const formatBTC = (number) => {
-            if (typeof number !== 'number') return '0';
-            // Gunakan Math.floor untuk membulatkan ke bawah dan menghilangkan semua desimal
-            const integerPart = Math.floor(number);
-            return new Intl.NumberFormat('en-US').format(integerPart);
-        };
-
-        // Fungsi dengan Exponential Backoff untuk menangani rate limit
-        async function fetchWithBackoff(url, maxRetries = 5) {
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(url);
-                    
-                    if (response.status === 429) {
-                        await new Promise(resolve => setTimeout(resolve, (2 ** i) * 1000));
-                        continue; 
-                    }
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    return response.json();
-
-                } catch (error) {
-                    if (i === maxRetries - 1) {
-                        throw new Error(`Gagal mengambil data setelah ${maxRetries} kali coba: ${error.message}`);
-                    }
-                    await new Promise(resolve => setTimeout(resolve, (2 ** i) * 1000));
-                }
-            }
-            throw new Error("Gagal mengambil data setelah semua percobaan.");
-        }
-
-        async function fetchWalletBalance() {
-            try {
-                const data = await fetchWithBackoff(API_URL);
-
-                // API BlockCypher mengembalikan saldo dalam satoshi (balance field)
-                const balanceInSatoshis = data.balance; 
-
-                if (typeof balanceInSatoshis === 'number') {
-                    // Konversi satoshi ke BTC (1 BTC = 100,000,000 satoshis)
-                    const balanceInBTC = balanceInSatoshis / SATOSHIS_PER_BTC;
-                    const formattedBalance = formatBTC(balanceInBTC);
-                    
-                    // Perbarui tampilan dengan data yang diformat
-                    displayElement.innerHTML = `${formattedBalance}&nbsp;BTC`;
-                    
-                } else {
-                    throw new Error('Data saldo (balance) tidak ditemukan di respons API.');
-                }
+        <!-- 4. Bagian Daftar Produk (SANGAT PADAT - 8 KOLOM) -->
+        <section id="produk-list" class="py-6">
+            <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 text-center sm:text-left">Semua Item</h2>
                 
-            } catch (error) {
-                // Tampilkan 0 BTC sebagai default jika gagal
-                const fallbackBalance = 0; 
-                displayElement.innerHTML = `${formatBTC(fallbackBalance)}&nbsp;BTC`;
-                console.error("Gagal memuat saldo real-time:", error);
+                <!-- Kontainer Grid Produk: 3 kolom mobile, 5 tablet, 8 desktop besar -->
+                <div id="product-list-container" class="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 lg:gap-3">
+                    <!-- Produk akan dirender di sini oleh JavaScript -->
+                </div>
+
+                <!-- Pesan Jika Produk Tidak Ditemukan -->
+                <div id="no-results" class="hidden text-center mt-8 p-6 bg-white rounded-xl shadow-lg">
+                    <p class="text-base text-gray-600 font-semibold">Produk tidak ditemukan.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 5. Footer (Sangat Pendek) -->
+    <footer class="bg-gray-800 py-3 mt-4">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-xs text-gray-400">
+                Katalog Produk Tanpa Fitur Keranjang.
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript untuk Data Produk dan Fungsi Pencarian -->
+    <script>
+        // Data Produk Placeholder (Menambahkan lebih banyak data agar grid terisi)
+        const products = [
+    { name: "PP NEO 0,5 BESAR", price: 31000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PP+NEO+05+_1" },
+    { name: "PP NEO 0,5 KECIL", price: 32000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PP+NEO+05+_2" },
+    { name: "PE TOMAT", price: 26000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PE+TOMAT_3" },
+    { name: "WAYANG", price: 33000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=WAYANG_4" },
+    { name: "WAYANG 60X100", price: 33000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=WAYANG+60X_5" },
+    { name: "AGAR SWALOW", price: 39000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=AGAR+SWALO_6" },
+    { name: "MIKA CETING", price: 9000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+CETIN_7" },
+    { name: "UHT DIAMOND", price: 210000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=UHT+DIAMON_8" },
+    { name: "SIMAS 15 KG", price: 290000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SIMAS+15+K_9" },
+    { name: "BOS", price: 459500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BOS_10" },
+    { name: "MIKA SEND 20", price: 232500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+SEND+_11" },
+    { name: "MIKA SEND 18", price: 202500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+SEND+_12" },
+    { name: "SEDOTAN STERIL 250", price: 320000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEDOTAN+ST_13" },
+    { name: "KEJU WINCHES", price: 360000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KEJU+WINCH_14" },
+    { name: "MIKA SEND S-7", price: 288000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+SEND+_15" },
+    { name: "MIKA SEND S-5", price: 240000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+SEND+_16" },
+    { name: "MIKA SEND S-3", price: 350000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+SEND+_17" },
+    { name: "PLASTIK KLIP 4X6", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PLASTIK+KL_18" },
+    { name: "PLASTIK KLIP 5X8", price: 16000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PLASTIK+KL_19" },
+    { name: "PLASTIK KLIP 6X10", price: 22500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PLASTIK+KL_20" },
+    { name: "PLASTIK KLIP 7X10", price: 26100, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PLASTIK+KL_21" },
+    { name: "PLASTIK KLIP 8,7X13", price: 44350, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PLASTIK+KL_22" },
+    { name: "PLASTIK KLIP 10X15", price: 54000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PLASTIK+KL_23" },
+    { name: "STP 9X15", price: 9100, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=STP+9X15_24" },
+    { name: "STP 10X17", price: 11700, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=STP+10X17_25" },
+    { name: "STP 12X20", price: 18000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=STP+12X20_26" },
+    { name: "STP 16X24", price: 30000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=STP+16X24_27" },
+    { name: "STP 16X30", price: 39000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=STP+16X30_28" },
+    { name: "STP 20X29", price: 46000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=STP+20X29_29" },
+    { name: "ANDALAN 3,5X20", price: 10500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANDALAN+35_30" },
+    { name: "ANDALAN 4X20", price: 10500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANDALAN+4X_31" },
+    { name: "ANDALAN 4,5X20", price: 10500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANDALAN+45_32" },
+    { name: "ANDALAN 6X15", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANDALAN+6X_33" },
+    { name: "ANDALAN 6X18", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANDALAN+6X_34" },
+    { name: "ANDALAN 6X20", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANDALAN+6X_35" },
+    { name: "ANDALAN 7X20", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANDALAN+7X_36" },
+    { name: "ANDALAN 8X20", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANDALAN+8X_37" },
+    { name: "ANDALAN 9X20", price: 19000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANDALAN+9X_38" },
+    { name: "TISU MAKAN GREEN", price: 11200, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TISU+MAKAN_39" },
+    { name: "SELAI GEL", price: 78500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SELAI+GEL_40" },
+    { name: "SELAI SERAT", price: 58500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SELAI+SERA_41" },
+    { name: "PIRING P9", price: 21000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PIRING+P9_42" },
+    { name: "PIRING TANGGUNG", price: 13000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PIRING+TAN_43" },
+    { name: "MANGKOK BESAR", price: 17250, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MANGKOK+BE_44" },
+    { name: "MANGKOK TANGGUNG", price: 12250, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MANGKOK+TA_45" },
+    { name: "PALMIA SACHET", price: 8500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PALMIA+SAC_46" },
+    { name: "AMANDA SACHET", price: 6000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=AMANDA+SAC_47" },
+    { name: "BLUEBAND SACHET", price: 8500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BLUEBAND+S_48" },
+    { name: "BLUEBAND COOKIES SACHET", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BLUEBAND+C_49" },
+    { name: "SARUNG TANGAN PLASTIK", price: 6000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SARUNG+TAN_50" },
+    { name: "PIRING KERTAS BULAT", price: 1000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PIRING+KER_51" },
+    { name: "PIRING KERTAS PERSEGI", price: 1400, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PIRING+KER_52" },
+    { name: "KERTAS KFC", price: 60000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KERTAS+KFC_53" },
+    { name: "LADAKU", price: 9500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LADAKU_54" },
+    { name: "BAWANG PUTIH DESAKU", price: 9500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BAWANG+PUT_55" },
+    { name: "MANGKOK KECIL", price: 9125, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MANGKOK+KE_56" },
+    { name: "KANTONG BOYO 24", price: 975000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KANTONG+BO_57" },
+    { name: "TISU GREENSOFT 2IN1 ", price: 246000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TISU+GREEN_58" },
+    { name: "TISU GREENSOFT POP UP", price: 175500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TISU+GREEN_59" },
+    { name: "SEALER CUP 1200", price: 498000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEALER+CUP_60" },
+    { name: "SEALER CUP 1000", price: 336000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEALER+CUP_61" },
+    { name: "SPUNBOND KOTAK", price: 105000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SPUNBOND+K_62" },
+    { name: "SPUNBOND 33", price: 30000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SPUNBOND+3_63" },
+    { name: "SPUNBOND LEBARAN", price: 125000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SPUNBOND+L_64" },
+    { name: "SPUNBOND 30", price: 28000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SPUNBOND+3_65" },
+    { name: "SAOS GANDARIA", price: 110400, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SAOS+GANDA_66" },
+    { name: "MENTEGA PUTIH", price: 285000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MENTEGA+PU_67" },
+    { name: "SENDOK PANJANG JUARA", price: 170000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SENDOK+PAN_68" },
+    { name: "SENDOK BEBEK WARNA", price: 175000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SENDOK+BEB_69" },
+    { name: "SENDOK BEBEK BENING", price: 225000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SENDOK+BEB_70" },
+    { name: "KANTONG KITA 15", price: 756000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KANTONG+KI_71" },
+    { name: "CUP CAKE BOLU WARNA", price: 18000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+CAKE+B_72" },
+    { name: "CUP CAKE 9 PENDEK WARNA", price: 23000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+CAKE+9_73" },
+    { name: "CUP CAKE 9 PENDEK PUTIH", price: 18000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+CAKE+9_74" },
+    { name: "CUP CAKE 4.5 WARNA", price: 11000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+CAKE+4_75" },
+    { name: "CUP CAKE 4.5 PUTIH", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+CAKE+4_76" },
+    { name: "MC LEUWIS SAMBAL 1KG", price: 11600, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_77" },
+    { name: "MC LEUWIS TOMAT 1KG", price: 11500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_78" },
+    { name: "MC LEUWIS SAMBAL 500gr", price: 6500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_79" },
+    { name: "MC LEUWIS TOMAT 500gr", price: 5700, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_80" },
+    { name: "MC LEUWIS EXT PEDAS 1KG", price: 14200, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_81" },
+    { name: "MC LEUWIS EXT PEDAS 500gr", price: 7800, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_82" },
+    { name: "MC LEUWIS EXT PEDAS 200gr", price: 4000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_83" },
+    { name: "MC LEUWIS BARBEQU", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_84" },
+    { name: "MC LEUWIS SPAGHETI", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_85" },
+    { name: "KECAP GANDARIA KCL", price: 8600, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KECAP+GAND_86" },
+    { name: "KECAP GANDARIA BSR", price: 21500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KECAP+GAND_87" },
+    { name: "KECAP SEMAR", price: 16000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KECAP+SEMA_88" },
+    { name: "MAMAYO 1kg", price: 22000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MAMAYO+1kg_89" },
+    { name: "MAMAYO 500gr", price: 11500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MAMAYO+500_90" },
+    { name: "MAMAYO 200gr", price: 5500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MAMAYO+200_91" },
+    { name: "KECAP DELIMA BESAR", price: 8200, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KECAP+DELI_92" },
+    { name: "KECAP DELIMA KECIL", price: 3600, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KECAP+DELI_93" },
+    { name: "SAOS BELIBIS CABE BESAR", price: 16500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SAOS+BELIB_94" },
+    { name: "SAOS BELIBIS TOMAT BESAR", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SAOS+BELIB_95" },
+    { name: "SAOS BELIBIS CABE KECIL", price: 6400, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SAOS+BELIB_96" },
+    { name: "SAOS BELIBIS TOMAT KECIL", price: 4200, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SAOS+BELIB_97" },
+    { name: "MINYAK WIJEN", price: 13500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MINYAK+WIJ_98" },
+    { name: "KECAP ASIN GANDARIA", price: 4000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KECAP+ASIN_99" },
+    { name: "SAORI LADA HITAM", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SAORI+LADA_100" },
+    { name: "MC LEUWIS SAOS KEJU", price: 13500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_101" },
+    { name: "NIKI SARI", price: 240000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=NIKI+SARI_102" },
+    { name: "PLASTIK CUP KITA", price: 30000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PLASTIK+CU_103" },
+    { name: "DAIRY CHAMP KALENG", price: 12800, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DAIRY+CHAM_104" },
+    { name: "CARNATION", price: 13500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CARNATION_105" },
+    { name: "DC EVAPORASI", price: 12500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DC+EVAPORA_106" },
+    { name: "TALI RAFIA 500gr WARNA", price: 180000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TALI+RAFIA_107" },
+    { name: "TALI RAFIA 500gr HITAM", price: 180000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TALI+RAFIA_108" },
+    { name: "PAPER CUP POLOS", price: 120000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PAPER+CUP+_109" },
+    { name: "PAPER CUP WARNA", price: 165000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PAPER+CUP+_110" },
+    { name: "DAIRY CHAMP 1KG", price: 435000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DAIRY+CHAM_111" },
+    { name: "MOTHER CHOICE", price: 332000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MOTHER+CHO_112" },
+    { name: "TEPUNG TAPIOKA BOLA DELI", price: 142500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+TAP_113" },
+    { name: "TEPUNG KETAN BOLA DELI", price: 206000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+KET_114" },
+    { name: "TEPUNG BERAS BOLA DELI", price: 144000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+BER_115" },
+    { name: "MINYAK NUSAKITA", price: 174000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MINYAK+NUS_116" },
+    { name: "TEPUNG SANIA", price: 95000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+SAN_117" },
+    { name: "TEPUNG TULIP", price: 85000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+TUL_118" },
+    { name: "BUTTER CREAM", price: 220000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BUTTER+CRE_119" },
+    { name: "MESIS KURNIA", price: 299000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MESIS+KURN_120" },
+    { name: "MESIS PARROT", price: 430000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MESIS+PARR_121" },
+    { name: "MESIS K9", price: 239000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MESIS+K9_122" },
+    { name: "CETING JUMBO", price: 160000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CETING+JUM_123" },
+    { name: "CETING KUBAH", price: 13000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CETING+KUB_124" },
+    { name: "CETING PERSEGI", price: 210000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CETING+PER_125" },
+    { name: "CETING WAKUL", price: 140000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CETING+WAK_126" },
+    { name: "SEDOTAN BIASA @10", price: 32000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEDOTAN+BI_127" },
+    { name: "SEDOTAN BIASA @5", price: 32000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEDOTAN+BI_128" },
+    { name: "SEDOTAN BIASA WARNA WARNI", price: 30000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEDOTAN+BI_129" },
+    { name: "SEDOTAN DAWET PANJANG", price: 30000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEDOTAN+DA_130" },
+    { name: "SEDOTAN DAWET PENDEK", price: 30000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEDOTAN+DA_131" },
+    { name: "WEKA RICEBOX 16", price: 650, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=WEKA+RICEB_132" },
+    { name: "DUS SEDAP MANTAP HIJAU", price: 700, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+SEDAP+_133" },
+    { name: "DUS SEDAP MANTAP KUNING", price: 700, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+SEDAP+_134" },
+    { name: "AQB", price: 320, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=AQB_135" },
+    { name: "DUS R10K COKLAT", price: 485, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R10K+C_136" },
+    { name: "DUS 20X20 LAMINASI", price: 650, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+20X20+_137" },
+    { name: "DUS GS 20X20 GRETEL", price: 1200, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+GS+20X_138" },
+    { name: "DUS R8 COKLAT", price: 400, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R8+COK_139" },
+    { name: "DUS R6 COKLAT", price: 350, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R6+COK_140" },
+    { name: "DUS R6 GRETEL", price: 650, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R6+GRE_141" },
+    { name: "DUS R8 GRETEL", price: 1000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R8+GRE_142" },
+    { name: "DUS DELIMA 20 PUTIH  @20", price: 14000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+DELIMA_143" },
+    { name: "DUS DELIMA 18 BATIK @50", price: 33000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+DELIMA_144" },
+    { name: "DUS R6 PUTIH", price: 400, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R6+PUT_145" },
+    { name: "DUS R3BA BATIK", price: 650, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R3BA+B_146" },
+    { name: "DUS S2", price: 220, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+S2_147" },
+    { name: "DUS R3 GRETEL", price: 500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R3+GRE_148" },
+    { name: "DUS R2 COKLAT", price: 240, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R2+COK_149" },
+    { name: "DUS R3BA COKLAT", price: 350, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+R3BA+C_150" },
+    { name: "DUS S2B", price: 240, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+S2B_151" },
+    { name: "MIKA BURGER @25", price: 8000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+BURGE_152" },
+    { name: "THINWALL 3000ml", price: 78000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+3_153" },
+    { name: "THINWALL 2000ml", price: 65000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+2_154" },
+    { name: "THINWALL 1500ml", price: 40500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+1_155" },
+    { name: "THINWALL 1000 REC", price: 27000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+1_156" },
+    { name: "THINWALL 750 REC", price: 24000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+7_157" },
+    { name: "THINWALL 650 REC", price: 23000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+6_158" },
+    { name: "THINWALL 500 REC", price: 22000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+5_159" },
+    { name: "THINWALL 200 BOWL", price: 12500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+2_160" },
+    { name: "THINWALL 200 REC", price: 14000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+2_161" },
+    { name: "THINWALL 300 REC", price: 15000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+3_162" },
+    { name: "THINWALL 300 BOWL", price: 13500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+3_163" },
+    { name: "THINWALL 500 SQUARE", price: 21000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+5_164" },
+    { name: "MIKA 2A", price: 27000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+2A_165" },
+    { name: "MIKA CIFON", price: 50000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+CIFON_166" },
+    { name: "MIKA BOLU KECIL", price: 50000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+BOLU+_167" },
+    { name: "MIKA BOLU BESAR", price: 80000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+BOLU+_168" },
+    { name: "KERTAS NASI SAYUR @100", price: 90000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KERTAS+NAS_169" },
+    { name: "KERTAS NASI SAYUR @250", price: 105000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KERTAS+NAS_170" },
+    { name: "KERTAS NASI WEKA BIRU", price: 100000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KERTAS+NAS_171" },
+    { name: "KERTAS PIRING", price: 45000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KERTAS+PIR_172" },
+    { name: "RICEBOWL 360ml", price: 220000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=RICEBOWL+3_173" },
+    { name: "RICEBOWL 500ml", price: 222000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=RICEBOWL+5_174" },
+    { name: "RICEBOWL 650ml", price: 13000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=RICEBOWL+6_175" },
+    { name: "CUP 16OZ", price: 6500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+16OZ_176" },
+    { name: "CUP 10OZ", price: 6500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+10OZ_177" },
+    { name: "CUP 14OZ", price: 6500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+14OZ_178" },
+    { name: "CUP 16 OVAL", price: 14000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+16+OVA_179" },
+    { name: "CUP 22 OZ", price: 12500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+22+OZ_180" },
+    { name: "FOAM BUBUR", price: 23000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=FOAM+BUBUR_181" },
+    { name: "FOAM HB", price: 36000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=FOAM+HB_182" },
+    { name: "FOAM POLOS", price: 32000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=FOAM+POLOS_183" },
+    { name: "FOAM SEKAT", price: 32000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=FOAM+SEKAT_184" },
+    { name: "COKLAT GALETO", price: 265000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=COKLAT+GAL_185" },
+    { name: "PASTA RB", price: 30000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PASTA+RB_186" },
+    { name: "PASTA KUPU2", price: 42000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PASTA+KUPU_187" },
+    { name: "PEWARNA KUPU2", price: 21500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PEWARNA+KU_188" },
+    { name: "SODA KUE", price: 27000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SODA+KUE_189" },
+    { name: "BAKING POWDER 500GR", price: 31700, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BAKING+POW_190" },
+    { name: "SP", price: 43500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SP_191" },
+    { name: "TUSUK GIGI", price: 16000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TUSUK+GIGI_192" },
+    { name: "T.GIGI STERIL", price: 13000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=T.GIGI+STE_193" },
+    { name: "NUTRISARI", price: 12500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=NUTRISARI_194" },
+    { name: "HILO", price: 16000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=HILO_195" },
+    { name: "HILO CALSIUM", price: 17000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=HILO+CALSI_196" },
+    { name: "LAKBAN BENING B", price: 65000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LAKBAN+BEN_197" },
+    { name: "LAKBAN COKLAT", price: 65000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LAKBAN+COK_198" },
+    { name: "LAKBAN TANGGUNG", price: 63000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LAKBAN+TAN_199" },
+    { name: "LAKBAN KECIL", price: 39000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LAKBAN+KEC_200" },
+    { name: "SENDOK AGAR", price: 18000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SENDOK+AGA_201" },
+    { name: "BAMBU 40X60", price: 112000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BAMBU+40X6_202" },
+    { name: "TICTAS 35X55", price: 98000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TICTAS+35X_203" },
+    { name: "TICTAS 18X27", price: 18500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TICTAS+18X_204" },
+    { name: "P.ULTAH BESAR", price: 50000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=P.ULTAH+BE_205" },
+    { name: "LAKBAN FRAGILE", price: 115000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LAKBAN+FRA_206" },
+    { name: "LUXIOS", price: 30500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LUXIOS_207" },
+    { name: "TISU MAKAN LIPAT", price: 13000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TISU+MAKAN_208" },
+    { name: "P ULTAH KECIL", price: 50000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=P+ULTAH+KE_209" },
+    { name: "STICKER THANK YOU", price: 80000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=STICKER+TH_210" },
+    { name: "LILIN POLKADOT", price: 65000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LILIN+POLK_211" },
+    { name: "LILIN SPIRAL PENDEK", price: 130000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LILIN+SPIR_212" },
+    { name: "BALON", price: 75000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BALON_213" },
+    { name: "LILIN 5 SPIRAL", price: 6000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LILIN+5+SP_214" },
+    { name: "P ULTAH OPP KECIL", price: 300000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=P+ULTAH+OP_215" },
+    { name: "P ULTAH OPP BESAR", price: 400000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=P+ULTAH+OP_216" },
+    { name: "PP NEO 10X15", price: 32000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PP+NEO+10X_217" },
+    { name: "MIKA GS-6", price: 6000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+GS-6_218" },
+    { name: "MIKA GS-4", price: 14000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+GS-4_219" },
+    { name: "MIKA GS-6 SEND", price: 5200, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+GS-6+_220" },
+    { name: "OPP 14X14", price: 42000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+14X14_221" },
+    { name: "OPP 13X13", price: 37000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+13X13_222" },
+    { name: "OPP 9X15", price: 29000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+9X15_223" },
+    { name: "OPP 8X12", price: 20000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+8X12_224" },
+    { name: "OPP 7X12", price: 19000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+7X12_225" },
+    { name: "OPP 6X18", price: 28000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+6X18_226" },
+    { name: "OPP 6X22", price: 30000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+6X22_227" },
+    { name: "OPP 9X22", price: 41000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+9X22_228" },
+    { name: "OPP 10X10", price: 23000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+10X10_229" },
+    { name: "CUP ULIR 150 WARNA", price: 6000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+ULIR+1_230" },
+    { name: "SUSU BUBUK", price: 27000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SUSU+BUBUK_231" },
+    { name: "WIJEN", price: 50000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=WIJEN_232" },
+    { name: "SODA KUE", price: 23000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SODA+KUE_233" },
+    { name: "GULA HALUS DONAT", price: 16000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=GULA+HALUS_234" },
+    { name: "TIGA SAPI", price: 12000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TIGA+SAPI_235" },
+    { name: "SKM ENAK COKLAT", price: 10500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SKM+ENAK+C_236" },
+    { name: "FRISIAN FLAG POUCH", price: 15000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=FRISIAN+FL_237" },
+    { name: "KACANG SANGRAI", price: 46000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KACANG+SAN_238" },
+    { name: "LID DATAR", price: 84000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LID+DATAR_239" },
+    { name: "BUBLE WRAP", price: 130000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BUBLE+WRAP_240" },
+    { name: "KANTONG 32 UNGU SAOLA", price: 95000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KANTONG+32_241" },
+    { name: "LOREK 32", price: 95000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LOREK+32_242" },
+    { name: "OPP 10X12", price: 28000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+10X12_243" },
+    { name: "OPP 11X12", price: 29000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+11X12_244" },
+    { name: "OPP 12X12", price: 32000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+12X12_245" },
+    { name: "GALLETO COMPOUND PUTIH", price: 13000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=GALLETO+CO_246" },
+    { name: "DS R8 COKLAT", price: 400, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DS+R8+COKL_247" },
+    { name: "P GAPURA 6X15", price: 5500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=P+GAPURA+6_248" },
+    { name: "WRAPPING", price: 13500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=WRAPPING_249" },
+    { name: "ALUMUNIUM FOIL", price: 13500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ALUMUNIUM+_250" },
+    { name: "ANGEL", price: 31500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANGEL_251" },
+    { name: "MIKA BENTO HITAM", price: 42600, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+BENTO_252" },
+    { name: "GARPU KUE", price: 3500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=GARPU+KUE_253" },
+    { name: "AIDA", price: 23000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=AIDA_254" },
+    { name: "CUP 10OZ,12OZ.14OZ,16OZ", price: 260000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+10OZ12_255" },
+    { name: "CUP 220ml", price: 220000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+220ml_256" },
+    { name: "CUP 22oz", price: 245000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+22oz_257" },
+    { name: "SEDOTAN 250", price: 320000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEDOTAN+25_258" },
+    { name: "SEDOTAN 500", price: 320000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEDOTAN+50_259" },
+    { name: "TEPUNG SEGITIGA", price: 128000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+SEG_260" },
+    { name: "TEPUNG LENCANA MERAH", price: 106000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+LEN_261" },
+    { name: "SKM TIGA SAPI", price: 576000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SKM+TIGA+S_262" },
+    { name: "CHOCOCIPS COKLAT", price: 174000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CHOCOCIPS+_263" },
+    { name: "CHOCOCIPS WARNA", price: 174000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CHOCOCIPS+_264" },
+    { name: "BAKER BONUS A", price: 53000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BAKER+BONU_265" },
+    { name: "SAF INSTANT", price: 53000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SAF+INSTAN_266" },
+    { name: "BAKERINE PLUS", price: 41000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BAKERINE+P_267" },
+    { name: "BREAD IMPROVER", price: 39000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BREAD+IMPR_268" },
+    { name: "MARGARINE AMANDA", price: 240000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MARGARINE+_269" },
+    { name: "BOBA TEA", price: 235000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BOBA+TEA_270" },
+    { name: "MIKA TRAY 16", price: 230000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+TRAY+_271" },
+    { name: "TISU MAKAN KILOAN", price: 134000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TISU+MAKAN_272" },
+    { name: "TISU MAKAN BDL", price: 139500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TISU+MAKAN_273" },
+    { name: "GREENSOFT CORELES", price: 233500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=GREENSOFT+_274" },
+    { name: "TISU MAKAN BULAT", price: 100500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TISU+MAKAN_275" },
+    { name: "T SOFT SOFTPACK 250", price: 294000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=T+SOFT+SOF_276" },
+    { name: "T SOFT 2IN1", price: 289000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=T+SOFT+2IN_277" },
+    { name: "TISU MAKAN KILOAN BDL", price: 134000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TISU+MAKAN_278" },
+    { name: "CUP 120ML", price: 320000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+120ML_279" },
+    { name: "TEPUNG VETERAN", price: 160000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+VET_280" },
+    { name: "SPRINKLE", price: 72000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SPRINKLE_281" },
+    { name: "SELASIH", price: 55000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SELASIH_282" },
+    { name: "NUTRIJELL BESAR", price: 48000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=NUTRIJELL+_283" },
+    { name: "NUTRIJELL KECIL", price: 19000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=NUTRIJELL+_284" },
+    { name: "PALMIA ROYAL", price: 8500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PALMIA+ROY_285" },
+    { name: "MIKA 2A", price: 27000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+2A_286" },
+    { name: "MIKA BOLU BESAR", price: 80000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+BOLU+_287" },
+    { name: "MIKA BOLU KECIL", price: 50000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+BOLU+_288" },
+    { name: "SEDOTAN POP ICE", price: 35000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SEDOTAN+PO_289" },
+    { name: "TISU MAKAN LIPAT", price: 13000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TISU+MAKAN_290" },
+    { name: "SELAI SERAT", price: 125000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SELAI+SERA_291" },
+    { name: "TUSUK SATE", price: 5500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TUSUK+SATE_292" },
+    { name: "SUMPIT", price: 6500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SUMPIT_293" },
+    { name: "SUSU BUBUK", price: 27000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SUSU+BUBUK_294" },
+    { name: "SELAI COKLAT", price: 23000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SELAI+COKL_295" },
+    { name: "KISMIS", price: 35000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KISMIS_296" },
+    { name: "MAIZENA MEI MEI", price: 135000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MAIZENA+ME_297" },
+    { name: "KANTONG 50 MERAH/HITAM", price: 28500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KANTONG+50_298" },
+    { name: "CUP SAMBAL 25ml", price: 6250, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+SAMBAL_299" },
+    { name: "CUP SAMBAL 32ml", price: 8250, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+SAMBAL_300" },
+    { name: "DUS SEDAP MANTAP ORANGE", price: 65000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=DUS+SEDAP+_301" },
+    { name: "LILIN ANGKA", price: 12500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LILIN+ANGK_302" },
+    { name: "CUP 16oz", price: 260000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+16oz_303" },
+    { name: "POP ICE", price: 10500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=POP+ICE_304" },
+    { name: "PUDING NUTRIJELL", price: 8000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PUDING+NUT_305" },
+    { name: "GALLETO COMPOUND PUTIH", price: 13000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=GALLETO+CO_306" },
+    { name: "CARNATION", price: 13500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CARNATION_307" },
+    { name: "NUTRIJELL KECIL BUAH", price: 19000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=NUTRIJELL+_308" },
+    { name: "NUTRIJELL KECIL COKLAT", price: 28000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=NUTRIJELL+_309" },
+    { name: "NUTRIJELL BESAR BUAH", price: 48000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=NUTRIJELL+_310" },
+    { name: "NUTRIJELL BESAR COKLAT", price: 58000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=NUTRIJELL+_311" },
+    { name: "AGAR AGAR SWALLOW", price: 40000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=AGAR+AGAR+_312" },
+    { name: "STICK ES KRIM", price: 18000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=STICK+ES+K_313" },
+    { name: "OPP 7X18", price: 16000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+7X18_314" },
+    { name: "OPP 8X18", price: 16500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+8X18_315" },
+    { name: "SELAI COKLAT ", price: 115000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SELAI+COKL_316" },
+    { name: "SENDOK PANJANG BENING", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SENDOK+PAN_317" },
+    { name: "PP NEO BESAR", price: 31000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PP+NEO+BES_318" },
+    { name: "FERMIPAN", price: 175000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=FERMIPAN_319" },
+    { name: "T SAKTI", price: 153000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=T+SAKTI_320" },
+    { name: "SAOS GANDARIA", price: 112000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SAOS+GANDA_321" },
+    { name: "SAOS TOMAT BAGONG", price: 48000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SAOS+TOMAT_322" },
+    { name: "COKLAT BUBUK ", price: 20000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=COKLAT+BUB_323" },
+    { name: "CUP 70ML", price: 8500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+70ML_324" },
+    { name: "CUP 100ML", price: 11500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+100ML_325" },
+    { name: "CUP 90ML", price: 11500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+90ML_326" },
+    { name: "MIKA BENTO HITAM", price: 45000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+BENTO_327" },
+    { name: "FOAM BUBUR", price: 22000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=FOAM+BUBUR_328" },
+    { name: "FOAM POLOS", price: 32000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=FOAM+POLOS_329" },
+    { name: "FOAM HB", price: 36000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=FOAM+HB_330" },
+    { name: "KEJU WINCIS", price: 360000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KEJU+WINCIS_331" },
+    { name: "LOS WARNA 24 MIX", price: 17500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LOS+WARNA+_332" },
+    { name: "MIKA 6A", price: 7000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+6A_333" },
+    { name: "MIKA S6", price: 5500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+S6_334" },
+    { name: "CUP SAMBEL 25ml", price: 7600, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+SAMBEL_335" },
+    { name: "CUP SAMBEL 35ml", price: 9200, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+SAMBEL_336" },
+    { name: "SENDOK TANGGUNG WARNA", price: 6000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SENDOK+TAN_337" },
+    { name: "TBM BESAR", price: 10000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TBM+BESAR_338" },
+    { name: "PUDING NUTRIJELL", price: 7900, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PUDING+NUT_339" },
+    { name: "GELAS 22OZ OLALA", price: 280000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=GELAS+22OZ_340" },
+    { name: "PALMIA 15kg", price: 310000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PALMIA+15k_341" },
+    { name: "SODA KUE KUPU-KUPU", price: 24000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SODA+KUE+K_342" },
+    { name: "BAKING POWDER KUPU-KUPU", price: 29000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BAKING+POW_343" },
+    { name: "SKM TIGA SAPI COKLAT", price: 12000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SKM+TIGA+S_344" },
+    { name: "LUNCH BOX TUTUP BATIK L", price: 25000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=LUNCH+BOX+_345" },
+    { name: "KEJU SPREADY PROCHIZ", price: 11000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KEJU+SPREAD_346" },
+    { name: "KEJU MOZARELLA PROCHIZ", price: 21500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KEJU+MOZAR_347" },
+    { name: "KEJU SLICE PROCHIZ", price: 10500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KEJU+SLICE_348" },
+    { name: "KEJU CHEDDAR PROCHIZ", price: 13000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KEJU+CHEDD_349" },
+    { name: "PEWARNA RW", price: 20000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PEWARNA+RW_350" },
+    { name: "SUMPIT", price: 6500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SUMPIT_351" },
+    { name: "TUSUK SATE", price: 5500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TUSUK+SATE_352" },
+    { name: "KECAP DELIMA", price: 8500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=KECAP+DELI_353" },
+    { name: "TICTAS 15 DOP", price: 47000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TICTAS+15+_354" },
+    { name: "PP NEO BESAR", price: 31000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=PP+NEO+BES_355" },
+    { name: "TW 750ml REC", price: 22500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TW+750ml+R_356" },
+    { name: "TEPUNG VETERAN", price: 163000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+VET_357" },
+    { name: "TEPUNG SAKTI", price: 153000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=TEPUNG+SAK_358" },
+    { name: "BUTTER CREAM", price: 220000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BUTTER+CRE_359" },
+    { name: "MC LEUWIS CABE 1kg", price: 11600, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_360" },
+    { name: "MC LEIUWIS TOMAT 500gr", price: 5700, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEIUWIS_361" },
+    { name: "BADER 18X30", price: 30200, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=BADER+18X3_362" },
+    { name: "THINWALL 250 REC", price: 14250, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=THINWALL+2_363" },
+    { name: "OPP 8X12", price: 21000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=OPP+8X12_364" },
+    { name: "CUP SAMBEL 25ml", price: 7600, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=CUP+SAMBEL_365" },
+    { name: "SENDOK TEH WARNA", price: 174000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=SENDOK+TEH_366" },
+    { name: "MIKA SEN S-6", price: 5500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MIKA+SEN+S_367" },
+    { name: "ANGEL", price: 31500, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=ANGEL_368" },
+    { name: "GALETO COMPOUND COKLAT", price: 260000, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=GALETO+CO_369" },
+    { name: "MC LEUWIS MAYO 1kg", price: 265700, imageUrl: "https://placehold.co/400x400/2dd4bf/ffffff?text=MC+LEUWIS+_370" },
+];
+
+
+        const productContainer = document.getElementById('product-list-container');
+        const searchInput = document.getElementById('search-input');
+        const noResultsMessage = document.getElementById('no-results');
+
+        // Fungsi untuk memformat angka menjadi format Rupiah
+        function formatRupiah(number) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(number);
+        }
+
+        // Fungsi untuk merender daftar produk
+        function renderProducts(productsToRender) {
+            productContainer.innerHTML = ''; 
+
+            if (productsToRender.length === 0) {
+                noResultsMessage.classList.remove('hidden');
+                return;
             }
+
+            noResultsMessage.classList.add('hidden');
+
+            productsToRender.forEach(product => {
+                const card = `
+                    <a href="#" onclick="viewProductDetails('${product.name}')" class="product-card bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 block">
+                        <!-- Gambar Produk -->
+                        <img 
+                            src="${product.imageUrl}" 
+                            alt="${product.name}" 
+                            class="product-image w-full bg-gray-100"
+                            onerror="this.onerror=null;this.src='https://placehold.co/400x400/e5e7eb/6b7280?text=NO+IMG';"
+                        >
+
+                        <!-- Detail Produk (Sangat Ringkas) -->
+                        <div class="product-card-content">
+                            
+                            <!-- Nama Produk (Satu Baris, Teks Sangat Kecil) -->
+                            <h3 class="text-xs font-medium text-gray-800 leading-tight whitespace-nowrap overflow-hidden text-ellipsis mb-1" title="${product.name}">${product.name}</h3>
+                            
+                            <!-- Harga (Teks Kecil) -->
+                            <p class="text-sm font-bold text-red-600">${formatRupiah(product.price)}</p>
+
+                        </div>
+                    </a>
+                `;
+                productContainer.innerHTML += card;
+            });
         }
 
-        function startRealTimeUpdates() {
-            // Jalankan fungsi pertama kali segera
-            fetchWalletBalance();
-            // Kemudian, perbarui setiap 15 detik (15000 ms)
-            setInterval(fetchWalletBalance, 15000); 
+        // Fungsi untuk menangani klik pada kartu (menggantikan tombol keranjang)
+        function viewProductDetails(productName) {
+            // Ini adalah placeholder untuk melihat detail produk.
+            console.log(`Mengalihkan ke halaman detail produk: ${productName}`);
+
+            const originalPlaceholder = searchInput.placeholder;
+            searchInput.placeholder = `Anda mengklik: ${productName}. Ini akan membuka halaman detail!`;
+            setTimeout(() => {
+                searchInput.placeholder = originalPlaceholder;
+            }, 2000);
+            
+            // Menghentikan navigasi ke atas halaman jika menggunakan anchor href="#"
+            return false;
         }
 
-        // Jalankan fungsi saat halaman dimuat
-        window.onload = startRealTimeUpdates;
+
+        // Fungsi untuk menangani pencarian/filtering produk
+        function handleSearch() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            
+            const filteredProducts = products.filter(product => {
+                const searchString = `${product.name} ${product.category} ${product.price}`.toLowerCase();
+                return searchString.includes(searchTerm);
+            });
+
+            renderProducts(filteredProducts);
+        }
+
+        // Inisialisasi: Render semua produk saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', () => {
+            renderProducts(products);
+        });
     </script>
+
 </body>
 </html>
